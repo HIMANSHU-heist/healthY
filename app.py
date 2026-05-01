@@ -1,23 +1,15 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import groq
 import os
 from dotenv import load_dotenv
-from flask import Flask, send_from_directory
 
-app = Flask(__name__, static_folder="frontend")
-
-@app.route("/")
-def home():
-    return send_from_directory("frontend", "index.html")
-   
 load_dotenv()
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="frontend")
 CORS(app)
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-
 client = groq.Groq(api_key=GROQ_API_KEY)
 
 PROMPT = """Act as a professional Clinical Nutritionist and Pharmacologist. Analyze the provided image and follow these specific instructions based on the content:
@@ -44,52 +36,51 @@ If the image is a meal or specific food items:
 """
 
 def analyze(image):
-
     response = client.chat.completions.create(
         model="meta-llama/llama-4-scout-17b-16e-instruct",
-        messages=[
-            {
-                "role":"user",
-                "content":[
-                    {
-                        "type":"image_url",
-                        "image_url":{
-                            "url":f"data:image/jpeg;base64,{image}"
-                        }
-                    },
-                    {"type":"text","text":PROMPT}
-                ]
-            }
-        ],
+        messages=[{
+            "role": "user",
+            "content": [
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{image}"
+                    }
+                },
+                {"type": "text", "text": PROMPT}
+            ]
+        }],
         max_tokens=1000
     )
-
     return response.choices[0].message.content
 
-@app.get("/")
-def home():
-    return {"message": "Server Running"}
+
+# FRONTEND ROUTE
+@app.route("/")
+def serve_frontend():
+    return send_from_directory("frontend", "index.html")
+
+
+# HEALTH CHECK (Render sathi useful)
+@app.route("/health")
+def health():
+    return {"status": "running"}
 
 
 @app.route("/analyze/food", methods=["POST"])
 def analyze_food():
     data = request.json
-    image = data["image"]
-
-    result = analyze(image)
-
+    result = analyze(data["image"])
     return jsonify({"result": result})
 
 
 @app.route("/analyze/medicine", methods=["POST"])
 def analyze_med():
     data = request.json
-    image = data["image"]
-
-    result = analyze(image)
-
+    result = analyze(data["image"])
     return jsonify({"result": result})
 
 
 if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
     app.run(port=5000, debug=True)
