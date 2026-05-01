@@ -3,7 +3,14 @@ from flask_cors import CORS
 import groq
 import os
 from dotenv import load_dotenv
+from flask import Flask, send_from_directory
 
+app = Flask(__name__, static_folder="frontend")
+
+@app.route("/")
+def home():
+    return send_from_directory("frontend", "index.html")
+   
 load_dotenv()
 
 app = Flask(__name__)
