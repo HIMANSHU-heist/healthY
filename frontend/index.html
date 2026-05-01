@@ -438,7 +438,7 @@ background:#f5f5f5;
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
 <script>
-const BACKEND = "http://localhost:5000";
+const BACKEND = "";
 const imageData = { food: null, med: null };
 
 function switchTab(tab) {
@@ -517,11 +517,11 @@ async function analyze(type) {
 
   try {
 
-    const res = await fetch(`${BACKEND}/analyze/${type === 'food' ? 'food' : 'medicine'}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: imageData[type] })
-    });
+    const res = await fetch(`/analyze/${type === 'food' ? 'food' : 'medicine'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: imageData[type] })
+      });
 
     const data = await res.json();
 
