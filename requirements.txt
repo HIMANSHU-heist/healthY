@@ -1,0 +1,9 @@
+streamlit
+google-generativeai
+pillow<12
+openai
+flask
+flask-cors
+groq
+pillow
+python-dotenv

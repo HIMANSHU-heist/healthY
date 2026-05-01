@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Health Coach</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0b0f1a;
+      --surface: #121829;
+      --surface2: #1a2236;
+      --border: #1f2d45;
+      --food: #00e5a0;
+      --food-dim: rgba(0,229,160,0.12);
+      --med: #ff6b6b;
+      --med-dim: rgba(255,107,107,0.12);
+      --text: #e8edf5;
+      --muted: #6b7fa3;
+      --radius: 16px;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Background mesh */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 20% 10%, rgba(0,229,160,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 80% 80%, rgba(255,107,107,0.06) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px 80px;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .logo-icon {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--food), #00b8ff);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(28px, 5vw, 42px);
+      font-weight: 800;
+      letter-spacing: -1px;
+      background: linear-gradient(120deg, var(--food) 0%, #00c6ff 50%, var(--med) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 15px;
+      margin-top: 8px;
+    }
+
+    /* Tab switcher */
+    .tab-bar {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: 5px;
+      gap: 5px;
+      width: fit-content;
+      margin: 0 auto 40px;
+    }
+
+    .tab-btn {
+      padding: 10px 28px;
+      border-radius: 50px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-family: 'Syne', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tab-btn.active-food {
+      background: var(--food-dim);
+      color: var(--food);
+      box-shadow: 0 0 20px rgba(0,229,160,0.15);
+    }
+
+    .tab-btn.active-med {
+      background: var(--med-dim);
+      color: var(--med);
+      box-shadow: 0 0 20px rgba(255,107,107,0.15);
+    }
+
+    /* Panel */
+    .panel { display: none; animation: fadeUp 0.4s ease; }
+    .panel.active { display: block; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Upload zone */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: var(--surface);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .upload-zone:hover { border-color: var(--zone-color); background: var(--zone-bg); }
+    .upload-zone.dragover { border-color: var(--zone-color); background: var(--zone-bg); transform: scale(1.01); }
+
+    #food-panel .upload-zone { --zone-color: var(--food); --zone-bg: var(--food-dim); }
+    #med-panel  .upload-zone { --zone-color: var(--med);  --zone-bg: var(--med-dim); }
+
+    .upload-icon { font-size: 48px; margin-bottom: 16px; }
+
+    .upload-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .upload-sub { color: var(--muted); font-size: 13px; }
+
+    input[type="file"] {
+      position: absolute; inset: 0;
+      opacity: 0; cursor: pointer;
+      width: 100%; height: 100%;
+    }
+
+    /* Preview */
+    .preview-wrap {
+      margin-top: 20px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: none;
+      position: relative;
+    }
+
+    .preview-wrap img {
+      width: 100%;
+      max-height: 320px;
+      object-fit: cover;
+      display: block;
+      border-radius: var(--radius);
+    }
+
+    .remove-btn {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(0,0,0,0.7);
+      border: none; color: #fff;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      cursor: pointer; font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
+      transition: background 0.2s;
+    }
+    .remove-btn:hover { background: rgba(255,50,50,0.8); }
+
+    /* Analyze button */
+    .analyze-btn {
+      width: 100%;
+      margin-top: 20px;
+      padding: 16px;
+      border: none;
+      border-radius: var(--radius);
+      font-family: 'Syne', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      letter-spacing: 0.5px;
+    }
+
+    #food-panel .analyze-btn {
+      background: linear-gradient(135deg, var(--food), #00c6a0);
+      color: #0b0f1a;
+      box-shadow: 0 8px 32px rgba(0,229,160,0.25);
+    }
+    #food-panel .analyze-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,229,160,0.35); }
+
+    #med-panel .analyze-btn {
+      background: linear-gradient(135deg, var(--med), #ff9966);
+      color: #0b0f1a;
+      box-shadow: 0 8px 32px rgba(255,107,107,0.25);
+    }
+    #med-panel .analyze-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(255,107,107,0.35); }
+
+    .analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+    /* Spinner */
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid rgba(0,0,0,0.3);
+      border-top-color: #0b0f1a;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Result box */
+    .result-box {
+      margin-top: 28px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      display: none;
+      animation: fadeUp 0.4s ease;
+    }
+
+    .result-box.show { display: block; }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .result-badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+    }
+
+    #food-panel .result-badge { background: var(--food-dim); color: var(--food); }
+    #med-panel  .result-badge { background: var(--med-dim);  color: var(--med); }
+
+    .result-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .result-content {
+      line-height: 1.8;
+      font-size: 15px;
+      color: #c8d4e8;
+      white-space: pre-wrap;
+    }
+
+    /* Disclaimer */
+    .disclaimer {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: rgba(255,107,107,0.08);
+      border: 1px solid rgba(255,107,107,0.2);
+      border-radius: 10px;
+      font-size: 12px;
+      color: var(--muted);
+      display: none;
+    }
+
+    /* Error */
+    .error-box {
+      margin-top: 20px;
+      padding: 16px;
+      background: rgba(255,50,50,0.1);
+      border: 1px solid rgba(255,50,50,0.3);
+      border-radius: var(--radius);
+      color: #ff6b6b;
+      font-size: 14px;
+      display: none;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      margin-top: 60px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    #food-output table,
+#med-output table{
+width:100%;
+border-collapse:collapse;
+margin-top:12px;
+}
+
+#food-output th,
+#food-output td,
+#med-output th,
+#med-output td{
+border:1px solid #ddd;
+padding:8px;
+text-align:left;
+}
+
+#food-output th,
+#med-output th{
+background:#f5f5f5;
+}
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⚕️</div>
+      <span style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;">HealthAI</span>
+    </div>
+    <h1>Your Smart Health Coach</h1>
+    <p class="subtitle">Upload a photo — get instant AI-powered analysis</p>
+  </header>
+
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <button class="tab-btn active-food" id="tab-food" onclick="switchTab('food')">
+      🥗 Food Analyzer
+    </button>
+    <button class="tab-btn" id="tab-med" onclick="switchTab('med')">
+      💊 Medicine Analyzer
+    </button>
+  </div>
+
+  <!-- FOOD PANEL -->
+  <div class="panel active" id="food-panel">
+    <div class="upload-zone" id="food-drop" ondragover="onDrag(event,'food')" ondragleave="offDrag('food')" ondrop="onDrop(event,'food')">
+      <input type="file" accept="image/*" id="food-input" onchange="onFile(event,'food')"/>
+      <div class="upload-icon">🥗</div>
+      <div class="upload-title">Drop your food photo here</div>
+      <div class="upload-sub">or click to browse — JPG, PNG supported</div>
+    </div>
+
+    <div class="preview-wrap" id="food-preview">
+      <img id="food-img" src="" alt="Food preview"/>
+      <button class="remove-btn" onclick="clearImage('food')">✕</button>
+    </div>
+
+    <button class="analyze-btn" id="food-btn" onclick="analyze('food')" disabled>
+      <span id="food-btn-text">🔍 Analyze Food</span>
+    </button>
+
+    <div class="error-box" id="food-error"></div>
+
+    <div class="result-box" id="food-result">
+      <div class="result-header">
+        <span class="result-badge">✅ ANALYSIS</span>
+        <span class="result-title">Food & Nutrition Report</span>
+      </div>
+      <div class="result-content" id="food-output"></div>
+    </div>
+  </div>
+
+  <!-- MEDICINE PANEL -->
+  <div class="panel" id="med-panel">
+    <div class="upload-zone" id="med-drop" ondragover="onDrag(event,'med')" ondragleave="offDrag('med')" ondrop="onDrop(event,'med')">
+      <input type="file" accept="image/*" id="med-input" onchange="onFile(event,'med')"/>
+      <div class="upload-icon">💊</div>
+      <div class="upload-title">Drop your medicine photo here</div>
+      <div class="upload-sub">Tablet, syrup, strip, box — any medicine photo</div>
+    </div>
+
+    <div class="preview-wrap" id="med-preview">
+      <img id="med-img" src="" alt="Medicine preview"/>
+      <button class="remove-btn" onclick="clearImage('med')">✕</button>
+    </div>
+
+    <button class="analyze-btn" id="med-btn" onclick="analyze('med')" disabled>
+      <span id="med-btn-text">🔍 Analyze Medicine</span>
+    </button>
+
+    <div class="error-box" id="med-error"></div>
+
+    <div class="result-box" id="med-result">
+      <div class="result-header">
+        <span class="result-badge">💊 ANALYSIS</span>
+        <span class="result-title">Medicine Information Report</span>
+      </div>
+      <div class="result-content" id="med-output"></div>
+      <div class="disclaimer" id="med-disclaimer">
+        ⚠️ This information is for educational purposes only. Always consult a qualified doctor or pharmacist before taking any medication.
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Powered by Groq AI · For informational use only · Not a substitute for medical advice
+  </footer>
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<script>
+const BACKEND = "http://localhost:5000";
+const imageData = { food: null, med: null };
+
+function switchTab(tab) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(tab === 'food' ? 'food-panel' : 'med-panel').classList.add('active');
+
+  document.getElementById('tab-food').className = 'tab-btn';
+  document.getElementById('tab-med').className = 'tab-btn';
+  document.getElementById('tab-' + tab).className = 'tab-btn active-' + tab;
+}
+
+function onFile(e, type) {
+  const file = e.target.files[0];
+  if (file) loadImage(file, type);
+}
+
+function onDrag(e, type) {
+  e.preventDefault();
+  document.getElementById(type + '-drop').classList.add('dragover');
+}
+
+function offDrag(type) {
+  document.getElementById(type + '-drop').classList.remove('dragover');
+}
+
+function onDrop(e, type) {
+  e.preventDefault();
+  offDrag(type);
+  const file = e.dataTransfer.files[0];
+  if (file) loadImage(file, type);
+}
+
+function loadImage(file, type) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const src = e.target.result;
+
+    document.getElementById(type + '-img').src = src;
+    document.getElementById(type + '-preview').style.display = 'block';
+    document.getElementById(type + '-btn').disabled = false;
+
+    imageData[type] = src.split(',')[1];
+
+    document.getElementById(type + '-result').classList.remove('show');
+    document.getElementById(type + '-error').style.display = 'none';
+  };
+
+  reader.readAsDataURL(file);
+}
+
+function clearImage(type) {
+  document.getElementById(type + '-img').src = '';
+  document.getElementById(type + '-preview').style.display = 'none';
+  document.getElementById(type + '-btn').disabled = true;
+  document.getElementById(type + '-input').value = '';
+
+  document.getElementById(type + '-result').classList.remove('show');
+  document.getElementById(type + '-error').style.display = 'none';
+
+  imageData[type] = null;
+}
+
+async function analyze(type) {
+
+  const btn = document.getElementById(type + '-btn');
+  const btnText = document.getElementById(type + '-btn-text');
+  const errorBox = document.getElementById(type + '-error');
+  const resultBox = document.getElementById(type + '-result');
+  const output = document.getElementById(type + '-output');
+
+  btn.disabled = true;
+  btnText.innerHTML = '<div class="spinner"></div> Analyzing...';
+
+  errorBox.style.display = 'none';
+  resultBox.classList.remove('show');
+
+  try {
+
+    const res = await fetch(`${BACKEND}/analyze/${type === 'food' ? 'food' : 'medicine'}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: imageData[type] })
+    });
+
+    const data = await res.json();
+
+    if (data.result) {
+
+      // Markdown render
+      output.innerHTML = marked.parse(data.result);
+
+      resultBox.classList.add('show');
+
+      if (type === 'med') {
+        document.getElementById('med-disclaimer').style.display = 'block';
+      }
+
+    } else {
+      throw new Error('No result received');
+    }
+
+  } catch (err) {
+
+    errorBox.textContent =
+      '❌ Error: ' + err.message + '. Make sure backend (app.py) is running.';
+    errorBox.style.display = 'block';
+
+  }
+
+  btn.disabled = false;
+
+  btnText.innerHTML =
+    type === 'food'
+      ? '🔍 Analyze Food'
+      : '🔍 Analyze Medicine';
+}
+</script>
+
+</body>
+</html>
