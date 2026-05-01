@@ -59,6 +59,10 @@ def analyze(image):
 
     return response.choices[0].message.content
 
+@app.get("/")
+def home():
+    return {"message": "Server Running"}
+
 
 @app.route("/analyze/food", methods=["POST"])
 def analyze_food():
