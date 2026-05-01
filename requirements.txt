@@ -7,3 +7,4 @@ flask-cors
 groq
 pillow
 python-dotenv
+gunicorn
